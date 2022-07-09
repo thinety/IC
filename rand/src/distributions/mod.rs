@@ -1,7 +1,9 @@
 use crate::rngs::Rng;
 
+mod cauchy;
 mod uniform;
 
+pub use cauchy::Cauchy;
 pub use uniform::Uniform;
 
 pub trait Distribution<T> {
