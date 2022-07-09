@@ -1,5 +1,6 @@
-use super::Rng;
+use crate::rngs::Rng;
 
+// https://prng.di.unimi.it/
 /// This is xoshiro256+ 1.0, our best and fastest generator for floating-point
 /// numbers. We suggest to use its upper bits for floating-point
 /// generation, as it is slightly faster than xoshiro256++/xoshiro256**. It

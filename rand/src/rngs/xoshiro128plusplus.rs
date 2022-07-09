@@ -1,5 +1,6 @@
-use super::Rng;
+use crate::rngs::Rng;
 
+// https://prng.di.unimi.it/
 /// This is xoshiro128++ 1.0, one of our 32-bit all-purpose, rock-solid
 /// generators. It has excellent speed, a state size (128 bits) that is
 /// large enough for mild parallelism, and it passes all tests we are aware

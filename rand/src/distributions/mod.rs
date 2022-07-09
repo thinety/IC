@@ -2,13 +2,10 @@ use crate::rngs::Rng;
 
 mod uniform;
 
-pub use uniform::{
-    UniformClosedOpen, UniformClosedOpen01, UniformOpenClosed, UniformOpenClosed01,
-    UniformOpenOpen, UniformOpenOpen01,
-};
+pub use uniform::Uniform;
 
-pub trait Distribution<T, U> {
+pub trait Distribution<T> {
     fn sample<R>(&self, rng: &mut R) -> T
     where
-        R: Rng<U>;
+        R: Rng<T>;
 }

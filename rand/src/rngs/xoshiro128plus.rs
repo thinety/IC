@@ -1,5 +1,6 @@
-use super::Rng;
+use crate::rngs::Rng;
 
+// https://prng.di.unimi.it/
 /// This is xoshiro128+ 1.0, our best and fastest 32-bit generator for 32-bit
 /// floating-point numbers. We suggest to use its upper bits for
 /// floating-point generation, as it is slightly faster than xoshiro128**.

@@ -1,115 +1,78 @@
+use crate::distributions::Distribution;
 use crate::rngs::Rng;
 
-use super::Distribution;
-
-pub struct UniformClosedOpen01 {}
-
-pub struct UniformOpenClosed01 {}
-
-pub struct UniformOpenOpen01 {}
-
-macro unit_uniform_distributions_impl($fty:ty, $uty:ty, $total_bits:expr, $significant_bits:expr) {
-    impl Distribution<$fty, $uty> for UniformClosedOpen01 {
-        fn sample<R>(&self, rng: &mut R) -> $fty
-        where
-            R: Rng<$uty>,
-        {
-            let value = rng.gen() >> ($total_bits - $significant_bits);
-
-            let scale = 1.0 / (((1 as $uty) << $significant_bits) as $fty);
-
-            scale * (value as $fty)
-        }
-    }
-
-    impl Distribution<$fty, $uty> for UniformOpenClosed01 {
-        fn sample<R>(&self, rng: &mut R) -> $fty
-        where
-            R: Rng<$uty>,
-        {
-            let value = rng.gen() >> ($total_bits - $significant_bits);
-
-            let scale = 1.0 / (((1 as $uty) << $significant_bits) as $fty);
-
-            scale * ((value + 1) as $fty)
-        }
-    }
-
-    impl Distribution<$fty, $uty> for UniformOpenOpen01 {
-        fn sample<R>(&self, rng: &mut R) -> $fty
-        where
-            R: Rng<$uty>,
-        {
-            let value = rng.gen() >> ($total_bits - $significant_bits);
-
-            let scale = 1.0 / (((1 as $uty) << $significant_bits) as $fty);
-
-            scale * ((value | 1) as $fty)
-        }
-    }
-}
-
-unit_uniform_distributions_impl! { f32, u32, 32, 24 }
-unit_uniform_distributions_impl! { f64, u64, 64, 53 }
-
-pub struct UniformClosedOpen<T> {
+pub struct Uniform<T> {
     start: T,
-    end: T,
-}
-impl<T> UniformClosedOpen<T> {
-    pub fn new(start: T, end: T) -> Self {
-        Self { start, end }
-    }
+    range: T,
 }
 
-pub struct UniformOpenOpen<T> {
-    start: T,
-    end: T,
-}
-impl<T> UniformOpenOpen<T> {
-    pub fn new(start: T, end: T) -> Self {
-        Self { start, end }
-    }
-}
-
-pub struct UniformOpenClosed<T> {
-    start: T,
-    end: T,
-}
-impl<T> UniformOpenClosed<T> {
-    pub fn new(start: T, end: T) -> Self {
-        Self { start, end }
-    }
-}
-
-macro uniform_distributions_impl($fty:ty, $uty:ty) {
-    impl Distribution<$fty, $uty> for UniformClosedOpen<$fty> {
-        fn sample<R>(&self, rng: &mut R) -> $fty
-        where
-            R: Rng<$uty>,
-        {
-            rng.sample(&UniformClosedOpen01 {}) * (self.end - self.start) + self.start
+macro_rules! uniform_impl {
+    ($ty:ty) => {
+        impl Uniform<$ty> {
+            pub fn new(start: $ty, end: $ty) -> Self {
+                Self {
+                    start,
+                    range: end - start,
+                }
+            }
         }
-    }
 
-    impl Distribution<$fty, $uty> for UniformOpenClosed<$fty> {
-        fn sample<R>(&self, rng: &mut R) -> $fty
-        where
-            R: Rng<$uty>,
-        {
-            rng.sample(&UniformOpenClosed01 {}) * (self.end - self.start) + self.start
+        impl From<core::ops::Range<$ty>> for Uniform<$ty> {
+            fn from(range: core::ops::Range<$ty>) -> Self {
+                Self::new(range.start, range.end)
+            }
         }
-    }
-
-    impl Distribution<$fty, $uty> for UniformOpenOpen<$fty> {
-        fn sample<R>(&self, rng: &mut R) -> $fty
-        where
-            R: Rng<$uty>,
-        {
-            rng.sample(&UniformOpenOpen01 {}) * (self.end - self.start) + self.start
-        }
-    }
+    };
 }
 
-uniform_distributions_impl! { f32, u32 }
-uniform_distributions_impl! { f64, u64 }
+uniform_impl! { u32 }
+uniform_impl! { u64 }
+uniform_impl! { f32 }
+uniform_impl! { f64 }
+
+macro_rules! uniform_discrete_distribution_impl {
+    ($uty:tt, $wty:ty, $shift:expr) => {
+        impl Distribution<$uty> for Uniform<$uty> {
+            // https://arxiv.org/pdf/1805.10941.pdf
+            fn sample<R>(&self, rng: &mut R) -> $uty
+            where
+                R: Rng<$uty>,
+            {
+                let x = rng.gen();
+                let mut m = (x as $wty) * (self.range as $wty);
+                let mut l = m as $uty;
+
+                if l < self.range {
+                    let t = ($uty::MAX - self.range + 1) % self.range;
+
+                    while l < t {
+                        let x = rng.gen();
+                        m = (x as $wty) * (self.range as $wty);
+                        l = m as $uty;
+                    }
+                }
+
+                self.start + (m >> $shift) as $uty
+            }
+        }
+    };
+}
+
+uniform_discrete_distribution_impl! { u32, u64, 32 }
+uniform_discrete_distribution_impl! { u64, u128, 64 }
+
+macro_rules! uniform_continuous_distribution_impl {
+    ($fty:ty) => {
+        impl Distribution<$fty> for Uniform<$fty> {
+            fn sample<R>(&self, rng: &mut R) -> $fty
+            where
+                R: Rng<$fty>,
+            {
+                self.start + self.range * rng.gen()
+            }
+        }
+    };
+}
+
+uniform_continuous_distribution_impl! { f32 }
+uniform_continuous_distribution_impl! { f64 }
