@@ -1,4 +1,4 @@
-use crate::distributions::{Distribution, StandardUniform};
+use crate::distributions::{Distribution, StandardUniformOpenOpen};
 use crate::rngs::Rng;
 
 pub struct StandardCauchy {}
@@ -23,7 +23,7 @@ macro_rules! cauchy_impl {
             where
                 R: Rng<Self::Backend>,
             {
-                let p: $fty = rng.sample(&StandardUniform {});
+                let p: $fty = rng.sample(&StandardUniformOpenOpen {});
 
                 $fty::tan(core::$fty::consts::PI * (p - 0.5))
             }

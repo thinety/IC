@@ -1,4 +1,4 @@
-use crate::distributions::{Distribution, StandardUniform};
+use crate::distributions::{Distribution, StandardUniformClosedOpen, StandardUniformOpenClosed};
 use crate::rngs::Rng;
 
 pub struct StandardNormal {}
@@ -24,10 +24,10 @@ macro_rules! normal_impl {
             where
                 R: Rng<Self::Backend>,
             {
-                let u1: $fty = rng.sample(&StandardUniform {});
-                let u2: $fty = rng.sample(&StandardUniform {});
+                let u1: $fty = rng.sample(&StandardUniformOpenClosed {});
+                let u2: $fty = rng.sample(&StandardUniformClosedOpen {});
 
-                let r = $fty::sqrt(-2.0 * $fty::ln(u1 + $fty::EPSILON / 2.0));
+                let r = $fty::sqrt(-2.0 * $fty::ln(u1));
                 let (sint, cost) = $fty::sin_cos(2.0 * core::$fty::consts::PI * u2);
 
                 (r * cost, r * sint)

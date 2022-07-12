@@ -1,17 +1,15 @@
 use crate::distributions::Distribution;
 use crate::rngs::Rng;
 
-pub struct StandardUniform {}
-
 pub struct Uniform<T> {
     start: T,
     range: T,
 }
 
-macro_rules! uniform_impl {
-    ($ty:ty) => {
-        impl Uniform<$ty> {
-            pub fn new(start: $ty, end: $ty) -> Self {
+macro_rules! discrete_uniform_impl {
+    ($uty:tt, $wty:ty, $shift:expr) => {
+        impl Uniform<$uty> {
+            pub fn new(start: $uty, end: $uty) -> Self {
                 Self {
                     start,
                     range: end - start,
@@ -19,21 +17,12 @@ macro_rules! uniform_impl {
             }
         }
 
-        impl From<core::ops::Range<$ty>> for Uniform<$ty> {
-            fn from(range: core::ops::Range<$ty>) -> Self {
+        impl From<core::ops::Range<$uty>> for Uniform<$uty> {
+            fn from(range: core::ops::Range<$uty>) -> Self {
                 Self::new(range.start, range.end)
             }
         }
-    };
-}
 
-uniform_impl! { u32 }
-uniform_impl! { u64 }
-uniform_impl! { f32 }
-uniform_impl! { f64 }
-
-macro_rules! uniform_discrete_distribution_impl {
-    ($uty:tt, $wty:ty, $shift:expr) => {
         impl Distribution<$uty> for Uniform<$uty> {
             type Backend = $uty;
 
@@ -62,12 +51,78 @@ macro_rules! uniform_discrete_distribution_impl {
     };
 }
 
-uniform_discrete_distribution_impl! { u32, u64, 32 }
-uniform_discrete_distribution_impl! { u64, u128, 64 }
+discrete_uniform_impl! { u32, u64, 32 }
+discrete_uniform_impl! { u64, u128, 64 }
 
-macro_rules! uniform_continuous_distribution_impl {
+pub struct StandardUniformClosedOpen {}
+
+pub struct UniformClosedOpen<T> {
+    start: T,
+    range: T,
+}
+
+pub struct StandardUniformOpenClosed {}
+
+pub struct UniformOpenClosed<T> {
+    start: T,
+    range: T,
+}
+
+pub struct StandardUniformOpenOpen {}
+
+pub struct UniformOpenOpen<T> {
+    start: T,
+    range: T,
+}
+
+macro_rules! continuous_uniform_impl {
     ($fty:tt, $uty:ty, $total_bits:expr, $significant_bits:expr) => {
-        impl Distribution<$fty> for StandardUniform {
+        impl UniformClosedOpen<$fty> {
+            pub fn new(start: $fty, end: $fty) -> Self {
+                Self {
+                    start,
+                    range: end - start,
+                }
+            }
+        }
+
+        impl From<core::ops::Range<$fty>> for UniformClosedOpen<$fty> {
+            fn from(range: core::ops::Range<$fty>) -> Self {
+                Self::new(range.start, range.end)
+            }
+        }
+
+        impl UniformOpenClosed<$fty> {
+            pub fn new(start: $fty, end: $fty) -> Self {
+                Self {
+                    start,
+                    range: end - start,
+                }
+            }
+        }
+
+        impl From<core::ops::Range<$fty>> for UniformOpenClosed<$fty> {
+            fn from(range: core::ops::Range<$fty>) -> Self {
+                Self::new(range.start, range.end)
+            }
+        }
+
+        impl UniformOpenOpen<$fty> {
+            pub fn new(start: $fty, end: $fty) -> Self {
+                Self {
+                    start,
+                    range: end - start,
+                }
+            }
+        }
+
+        impl From<core::ops::Range<$fty>> for UniformOpenOpen<$fty> {
+            fn from(range: core::ops::Range<$fty>) -> Self {
+                Self::new(range.start, range.end)
+            }
+        }
+
+        impl Distribution<$fty> for StandardUniformClosedOpen {
             type Backend = $uty;
 
             fn sample<R>(&self, rng: &mut R) -> $fty
@@ -82,14 +137,70 @@ macro_rules! uniform_continuous_distribution_impl {
             }
         }
 
-        impl Distribution<$fty> for Uniform<$fty> {
+        impl Distribution<$fty> for UniformClosedOpen<$fty> {
             type Backend = $uty;
 
             fn sample<R>(&self, rng: &mut R) -> $fty
             where
                 R: Rng<Self::Backend>,
             {
-                let x = rng.sample(&StandardUniform {});
+                let x = rng.sample(&StandardUniformClosedOpen {});
+
+                $fty::mul_add(x, self.range, self.start)
+            }
+        }
+
+        impl Distribution<$fty> for StandardUniformOpenClosed {
+            type Backend = $uty;
+
+            fn sample<R>(&self, rng: &mut R) -> $fty
+            where
+                R: Rng<Self::Backend>,
+            {
+                let value = rng.gen() >> ($total_bits - $significant_bits);
+
+                let scale = 1.0 / (((1 as $uty) << $significant_bits) as $fty);
+
+                scale * ((value + 1) as $fty)
+            }
+        }
+
+        impl Distribution<$fty> for UniformOpenClosed<$fty> {
+            type Backend = $uty;
+
+            fn sample<R>(&self, rng: &mut R) -> $fty
+            where
+                R: Rng<Self::Backend>,
+            {
+                let x = rng.sample(&StandardUniformOpenClosed {});
+
+                $fty::mul_add(x, self.range, self.start)
+            }
+        }
+
+        impl Distribution<$fty> for StandardUniformOpenOpen {
+            type Backend = $uty;
+
+            fn sample<R>(&self, rng: &mut R) -> $fty
+            where
+                R: Rng<Self::Backend>,
+            {
+                let value = rng.gen() >> ($total_bits - $significant_bits);
+
+                let scale = 1.0 / (((1 as $uty) << $significant_bits) as $fty);
+
+                scale * ((value | 1) as $fty)
+            }
+        }
+
+        impl Distribution<$fty> for UniformOpenOpen<$fty> {
+            type Backend = $uty;
+
+            fn sample<R>(&self, rng: &mut R) -> $fty
+            where
+                R: Rng<Self::Backend>,
+            {
+                let x = rng.sample(&StandardUniformOpenOpen {});
 
                 $fty::mul_add(x, self.range, self.start)
             }
@@ -97,5 +208,5 @@ macro_rules! uniform_continuous_distribution_impl {
     };
 }
 
-uniform_continuous_distribution_impl! { f32, u32, 32, 24 }
-uniform_continuous_distribution_impl! { f64, u64, 64, 53 }
+continuous_uniform_impl! { f32, u32, 32, 24 }
+continuous_uniform_impl! { f64, u64, 64, 53 }
