@@ -12,9 +12,7 @@ pub use uniform::{
 };
 
 pub trait Distribution<T> {
-    type Backend;
-
     fn sample<R>(&self, rng: &mut R) -> T
     where
-        R: Rng<Self::Backend>;
+        R: Rng;
 }

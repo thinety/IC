@@ -3,54 +3,43 @@ use crate::rngs::Rng;
 
 pub struct StandardNormal {}
 
-pub struct Normal<T> {
-    mean: T,
-    std_dev: T,
+pub struct Normal {
+    mean: f64,
+    std_dev: f64,
 }
 
-macro_rules! normal_impl {
-    ($fty:tt, $uty:ty) => {
-        impl Normal<$fty> {
-            pub fn new(mean: $fty, std_dev: $fty) -> Self {
-                Self { mean, std_dev }
-            }
-        }
-
-        impl Distribution<($fty, $fty)> for StandardNormal {
-            type Backend = $uty;
-
-            // Box-Muller transform
-            fn sample<R>(&self, rng: &mut R) -> ($fty, $fty)
-            where
-                R: Rng<Self::Backend>,
-            {
-                let u1: $fty = rng.sample(&StandardUniformOpenClosed {});
-                let u2: $fty = rng.sample(&StandardUniformClosedOpen {});
-
-                let r = $fty::sqrt(-2.0 * $fty::ln(u1));
-                let (sint, cost) = $fty::sin_cos(2.0 * core::$fty::consts::PI * u2);
-
-                (r * cost, r * sint)
-            }
-        }
-
-        impl Distribution<($fty, $fty)> for Normal<$fty> {
-            type Backend = $uty;
-
-            fn sample<R>(&self, rng: &mut R) -> ($fty, $fty)
-            where
-                R: Rng<Self::Backend>,
-            {
-                let (z1, z2) = rng.sample(&StandardNormal {});
-
-                (
-                    $fty::mul_add(z1, self.std_dev, self.mean),
-                    $fty::mul_add(z2, self.std_dev, self.mean),
-                )
-            }
-        }
-    };
+impl Normal {
+    pub fn new(mean: f64, std_dev: f64) -> Self {
+        Self { mean, std_dev }
+    }
 }
 
-normal_impl! { f32, u32 }
-normal_impl! { f64, u64 }
+impl Distribution<(f64, f64)> for StandardNormal {
+    // Box-Muller transform
+    fn sample<R>(&self, rng: &mut R) -> (f64, f64)
+    where
+        R: Rng,
+    {
+        let u1 = rng.sample(&StandardUniformOpenClosed {});
+        let u2 = rng.sample(&StandardUniformClosedOpen {});
+
+        let r = f64::sqrt(-2.0 * f64::ln(u1));
+        let (sint, cost) = f64::sin_cos(2.0 * core::f64::consts::PI * u2);
+
+        (r * cost, r * sint)
+    }
+}
+
+impl Distribution<(f64, f64)> for Normal {
+    fn sample<R>(&self, rng: &mut R) -> (f64, f64)
+    where
+        R: Rng,
+    {
+        let (z1, z2) = rng.sample(&StandardNormal {});
+
+        (
+            f64::mul_add(z1, self.std_dev, self.mean),
+            f64::mul_add(z2, self.std_dev, self.mean),
+        )
+    }
+}

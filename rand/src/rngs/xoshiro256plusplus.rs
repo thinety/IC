@@ -94,7 +94,7 @@ impl Xoshiro256PlusPlus {
     }
 }
 
-impl Rng<u64> for Xoshiro256PlusPlus {
+impl Rng for Xoshiro256PlusPlus {
     fn gen(&mut self) -> u64 {
         self.next_u64()
     }
